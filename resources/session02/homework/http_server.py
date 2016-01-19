@@ -6,11 +6,13 @@ from pathlib import Path
 
 def response_ok(body=b"this is a pretty minimal response", mimetype=b"text/plain"):
     """returns a basic HTTP response"""
+
+    body, mimetype = resolve_uri(body)
     resp = []
     resp.append(b"HTTP/1.1 200 OK")
-    resp.append(b"Content-Type: text/plain")
+    resp.append(b"Content-Type: " + mimetype)
     resp.append(b"")
-    resp.append(b"this is a pretty minimal response")
+    resp.append(body)
     return b"\r\n".join(resp)
 
 
@@ -42,24 +44,33 @@ def resolve_uri(uri):
     """This method should return appropriate content and a mime type"""
     contents = b''
     mimetype = b''
+    directory = './webroot'
 
-    homedir = Path('/webroot')
-    pathreq = homedir / uri # Attempt to resolve the requested directory
-
-    if pathreq.exists():
-        if pathreq.isdir():
-            # The requested path maps to a directory. The content should be a
-            # plain-text listing of the directory contents with a mimetype of text/plain.
-            filelist = [files for files in pathreq.iterdir() if files.is_file()]
-            contents = '\n'.join(filelist).encode('utf8')
-            mimetype = b'text/plain'
-        else:
-            # The requested path maps to a file
-            with open(pathreq, 'rb') as contents:
-                mimetype = mimetypes.guess_type(str(pathreq))
+    if isinstance(uri, bytes):
+        directory += str(uri.decode('utf8'))
     else:
-        # URI request does not exist. Raise an exception
-        raise NameError
+        directory += str(uri)
+
+    try:
+        pathreq = Path(directory).resolve()  # Attempt to resolve the requested directory
+
+        if pathreq.exists():
+            if pathreq.is_dir():
+                # The requested path maps to a directory. The content should be a
+                # plain-text listing of the directory contents with a mimetype of text/plain.
+                filelist = [str(files) for files in pathreq.iterdir() if files.is_file()]
+                contents = '\n'.join(filelist).encode('utf8')
+                mimetype = b'text/plain'
+            else:
+                # The requested path maps to a file
+                contents = pathreq.read_bytes()
+                mimetype = mimetypes.guess_type(str(pathreq))[0].encode('utf8')
+        else:
+            raise NameError("{} does not exist\n".format(pathreq))
+    except FileNotFoundError:
+        raise NameError("{} could not be resolved\n".format(directory))
+    except:
+        print("Unexpected error:{}\n".format(sys.exc_info()[0]))
 
     return contents, mimetype
 
