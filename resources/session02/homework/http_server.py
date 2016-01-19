@@ -46,18 +46,17 @@ def resolve_uri(uri):
     homedir = Path('/webroot')
     pathreq = homedir / uri # Attempt to resolve the requested directory
 
-
     if pathreq.exists():
         if pathreq.isdir():
             # The requested path maps to a directory. The content should be a
             # plain-text listing of the directory contents with a mimetype of text/plain.
             filelist = [files for files in pathreq.iterdir() if files.is_file()]
-            contents  = '\n'.join(filelist).encode('utf8')
+            contents = '\n'.join(filelist).encode('utf8')
             mimetype = b'text/plain'
         else:
             # The requested path maps to a file
             with open(pathreq, 'rb') as contents:
-                mimetype = mimetypes.guess_type(pathreq)
+                mimetype = mimetypes.guess_type(str(pathreq))
     else:
         # URI request does not exist. Raise an exception
         raise NameError
